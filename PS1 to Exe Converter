@@ -1,0 +1,210 @@
+# Force bypass execution policy
+Set-ExecutionPolicy Bypass -Scope Process -Force
+
+# Load assemblies
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+# ============================
+# GUI SETUP
+# ============================
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "PS1 → EXE Converter"
+$form.Size = New-Object System.Drawing.Size(600, 400)
+$form.StartPosition = "CenterScreen"
+$form.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
+$form.FormBorderStyle = 'FixedDialog'
+$form.MaximizeBox = $false
+
+$fontTitle = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
+$fontNormal = New-Object System.Drawing.Font("Segoe UI", 10)
+
+# --- Title ---
+$title = New-Object System.Windows.Forms.Label
+$title.Text = "PS1 → EXE Converter by drox-Ph-Ceb"
+$title.ForeColor = "LimeGreen"
+$title.Font = $fontTitle
+$title.AutoSize = $true
+$title.Location = New-Object System.Drawing.Point(110, 15)
+$form.Controls.Add($title)
+
+# === Note Label (Red) ===
+$note = New-Object System.Windows.Forms.Label
+$note.Text = "For Donation: Gcash 09451035299"
+$note.AutoSize = $true
+$note.Font = New-Object System.Drawing.Font("Segoe UI",10,[System.Drawing.FontStyle]::Italic)
+$note.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#D0342C")
+$note.Location = New-Object System.Drawing.Point(25,280)
+$form.Controls.Add($note)
+
+# --- PS1 Input ---
+$lblPS1 = New-Object System.Windows.Forms.Label
+$lblPS1.Text = "PowerShell Script (.ps1):"
+$lblPS1.ForeColor = "White"
+$lblPS1.Font = $fontNormal
+$lblPS1.AutoSize = $true
+$lblPS1.Location = New-Object System.Drawing.Point(30, 60)
+$form.Controls.Add($lblPS1)
+
+$txtPS1 = New-Object System.Windows.Forms.TextBox
+$txtPS1.Size = New-Object System.Drawing.Size(400, 25)
+$txtPS1.Location = New-Object System.Drawing.Point(30, 85)
+$form.Controls.Add($txtPS1)
+
+$btnBrowsePS1 = New-Object System.Windows.Forms.Button
+$btnBrowsePS1.Text = "Browse"
+$btnBrowsePS1.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 215)
+$btnBrowsePS1.ForeColor = "White"
+$btnBrowsePS1.FlatStyle = 'Flat'
+$btnBrowsePS1.Size = New-Object System.Drawing.Size(80, 25)
+$btnBrowsePS1.Location = New-Object System.Drawing.Point(440, 85)
+$btnBrowsePS1.Add_Click({
+    $ofd = New-Object System.Windows.Forms.OpenFileDialog
+    $ofd.Filter = "PowerShell Scripts (*.ps1)|*.ps1"
+    if ($ofd.ShowDialog() -eq 'OK') {
+        $txtPS1.Text = $ofd.FileName
+        $txtOut.Text = [System.IO.Path]::ChangeExtension($ofd.FileName, ".exe")
+    }
+})
+$form.Controls.Add($btnBrowsePS1)
+
+# --- Icon Input ---
+$lblIcon = New-Object System.Windows.Forms.Label
+$lblIcon.Text = "Icon (.ico) [Optional]:"
+$lblIcon.ForeColor = "White"
+$lblIcon.Font = $fontNormal
+$lblIcon.AutoSize = $true
+$lblIcon.Location = New-Object System.Drawing.Point(30, 125)
+$form.Controls.Add($lblIcon)
+
+$txtIcon = New-Object System.Windows.Forms.TextBox
+$txtIcon.Size = New-Object System.Drawing.Size(400, 25)
+$txtIcon.Location = New-Object System.Drawing.Point(30, 150)
+$form.Controls.Add($txtIcon)
+
+$btnBrowseIcon = New-Object System.Windows.Forms.Button
+$btnBrowseIcon.Text = "Browse"
+$btnBrowseIcon.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 215)
+$btnBrowseIcon.ForeColor = "White"
+$btnBrowseIcon.FlatStyle = 'Flat'
+$btnBrowseIcon.Size = New-Object System.Drawing.Size(80, 25)
+$btnBrowseIcon.Location = New-Object System.Drawing.Point(440, 150)
+$btnBrowseIcon.Add_Click({
+    $ofd = New-Object System.Windows.Forms.OpenFileDialog
+    $ofd.Filter = "Icon Files (*.ico)|*.ico|All Files (*.*)|*.*"
+    if ($ofd.ShowDialog() -eq 'OK') { $txtIcon.Text = $ofd.FileName }
+})
+$form.Controls.Add($btnBrowseIcon)
+
+# --- Output EXE Name ---
+$lblOut = New-Object System.Windows.Forms.Label
+$lblOut.Text = "Output EXE Name (editable):"
+$lblOut.ForeColor = "White"
+$lblOut.Font = $fontNormal
+$lblOut.AutoSize = $true
+$lblOut.Location = New-Object System.Drawing.Point(30, 190)
+$form.Controls.Add($lblOut)
+
+$txtOut = New-Object System.Windows.Forms.TextBox
+$txtOut.Size = New-Object System.Drawing.Size(400, 25)
+$txtOut.Location = New-Object System.Drawing.Point(30, 215)
+$form.Controls.Add($txtOut)
+
+# --- Progress Bar ---
+$progress = New-Object System.Windows.Forms.ProgressBar
+$progress.Size = New-Object System.Drawing.Size(520, 20)
+$progress.Location = New-Object System.Drawing.Point(30, 250)
+$progress.Minimum = 0
+$progress.Maximum = 100
+$progress.Value = 0
+$form.Controls.Add($progress)
+
+# --- Status Label ---
+$status = New-Object System.Windows.Forms.Label
+$status.Text = ""
+$status.ForeColor = "Gold"
+$status.Font = $fontNormal
+$status.AutoSize = $true
+$status.Location = New-Object System.Drawing.Point(30, 280)
+$form.Controls.Add($status)
+
+# --- Convert Button ---
+$btnConvert = New-Object System.Windows.Forms.Button
+$btnConvert.Text = "Convert to EXE"
+$btnConvert.BackColor = [System.Drawing.Color]::FromArgb(0, 180, 100)
+$btnConvert.ForeColor = "White"
+$btnConvert.FlatStyle = 'Flat'
+$btnConvert.Size = New-Object System.Drawing.Size(520, 35)
+$btnConvert.Location = New-Object System.Drawing.Point(30, 310)
+$form.Controls.Add($btnConvert)
+
+# ============================
+# CONVERSION LOGIC WITH SAFE PROGRESS
+# ============================
+$btnConvert.Add_Click({
+    $ps1 = $txtPS1.Text.Trim()
+    $icon = $txtIcon.Text.Trim()
+    $out = $txtOut.Text.Trim()
+
+    if (-not (Test-Path $ps1)) {
+        [System.Windows.Forms.MessageBox]::Show("Please select a valid PS1 file.", "Error", 0, 16)
+        return
+    }
+
+    if (-not $out) { $out = [System.IO.Path]::ChangeExtension($ps1, ".exe") }
+    if (-not $out.ToLower().EndsWith(".exe")) { $out = "$out.exe" }
+
+    $status.ForeColor = "Gold"
+    $status.Text = "Checking ps2exe module..."
+    $form.Refresh()
+
+    if (-not (Get-Module -ListAvailable -Name ps2exe)) {
+        try {
+            $status.Text = "Installing ps2exe module..."
+            $form.Refresh()
+            Install-Module -Name ps2exe -Scope CurrentUser -Force -AllowClobber
+        } catch {
+            [System.Windows.Forms.MessageBox]::Show("Error installing ps2exe. Please run PowerShell as Administrator.", "Error", 0, 16)
+            return
+        }
+    }
+
+    Import-Module ps2exe -ErrorAction Stop
+
+    # Reset progress
+    $progress.Value = 0
+    $status.Text = "Converting..."
+    $form.Refresh()
+
+    # Fake progress loop (EXE-safe)
+    for ($i=1; $i -le 95; $i++) {
+        Start-Sleep -Milliseconds 50
+        $progress.Value = $i
+        $form.Refresh()
+    }
+
+    try {
+        if ($icon) {
+            Invoke-PS2EXE $ps1 $out -noConsole -icon $icon
+        } else {
+            Invoke-PS2EXE $ps1 $out -noConsole
+        }
+
+        # Complete progress
+        $progress.Value = 100
+        $status.ForeColor = "Cyan"
+        $status.Text = "✅ Conversion complete!"
+        [System.Windows.Forms.MessageBox]::Show("Conversion complete!`nOutput: $out", "Success", 0, 64)
+
+        # Open folder
+        Start-Process (Split-Path $out -Parent)
+    }
+    catch {
+        $status.ForeColor = "Red"
+        $status.Text = "❌ Conversion failed."
+        [System.Windows.Forms.MessageBox]::Show("Failed to convert.`n$_", "Error", 0, 16)
+    }
+})
+
+# Show GUI
+[void]$form.ShowDialog()
